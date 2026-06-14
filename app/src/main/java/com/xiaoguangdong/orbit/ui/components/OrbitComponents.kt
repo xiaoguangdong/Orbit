@@ -6,6 +6,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -52,6 +53,8 @@ import com.xiaoguangdong.orbit.domain.model.CheckInStatus
 import com.xiaoguangdong.orbit.domain.model.DailyRecord
 import com.xiaoguangdong.orbit.domain.model.HabitCardModel
 import com.xiaoguangdong.orbit.domain.model.TodayOverview
+import com.xiaoguangdong.orbit.ui.LocalAppLanguage
+import com.xiaoguangdong.orbit.ui.tr
 import java.time.LocalDate
 import java.time.format.TextStyle
 import java.util.Locale
@@ -90,16 +93,16 @@ fun TodayOverviewCard(overview: TodayOverview) {
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Text(
-                text = "Today's orbit",
+                text = tr("Today's orbit", "今日习惯"),
                 style = MaterialTheme.typography.titleLarge,
             )
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                StatPill("Planned", overview.plannedCount.toString(), Color(0xFF2F6BFF))
-                StatPill("Completed", overview.completedCount.toString(), Color(0xFF24C99A))
-                StatPill("Streaks", overview.activeStreaks.toString(), Color(0xFFF6B938))
+                StatPill(tr("Planned", "计划"), overview.plannedCount.toString(), Color(0xFF2F6BFF))
+                StatPill(tr("Completed", "完成"), overview.completedCount.toString(), Color(0xFF24C99A))
+                StatPill(tr("Streaks", "连胜"), overview.activeStreaks.toString(), Color(0xFFF6B938))
             }
             Box(
                 modifier = Modifier
@@ -143,6 +146,7 @@ fun DateStrip(
     selectedDate: LocalDate,
     onSelect: (LocalDate) -> Unit,
 ) {
+    val locale = if (LocalAppLanguage.current == com.xiaoguangdong.orbit.domain.model.AppLanguage.CHINESE) Locale.CHINESE else Locale.ENGLISH
     LazyRow(
         contentPadding = PaddingValues(horizontal = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -159,7 +163,7 @@ fun DateStrip(
                 verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 Text(
-                    text = date.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.ENGLISH),
+                    text = date.dayOfWeek.getDisplayName(TextStyle.SHORT, locale),
                     color = if (selected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
                     style = MaterialTheme.typography.labelLarge,
                 )
@@ -236,7 +240,7 @@ fun HabitCard(
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         AssistChip(
                             onClick = {},
-                            label = { Text("${habit.streak}d streak") },
+                            label = { Text(tr("${habit.streak}d streak", "连续 ${habit.streak} 天")) },
                             leadingIcon = {
                                 Icon(Icons.Outlined.AutoAwesome, null, modifier = Modifier.size(16.dp))
                             },
@@ -254,10 +258,10 @@ fun HabitCard(
                     label = {
                         Text(
                             when (habit.statusForDate) {
-                                CheckInStatus.COMPLETED -> "Done"
-                                CheckInStatus.SKIPPED -> "Skip"
-                                CheckInStatus.FAILED -> "Fail"
-                                null -> "Mark"
+                                CheckInStatus.COMPLETED -> tr("Done", "完成")
+                                CheckInStatus.SKIPPED -> tr("Skip", "跳过")
+                                CheckInStatus.FAILED -> tr("Fail", "失败")
+                                null -> tr("Mark", "打卡")
                             },
                         )
                     },
@@ -277,6 +281,7 @@ fun HabitCard(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun HeatmapGrid(records: List<DailyRecord>) {
     FlowRow(

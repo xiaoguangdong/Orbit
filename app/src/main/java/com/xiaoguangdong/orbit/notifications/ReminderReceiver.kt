@@ -15,9 +15,11 @@ import androidx.core.content.ContextCompat
 import com.xiaoguangdong.orbit.MainActivity
 import com.xiaoguangdong.orbit.OrbitApplication
 import com.xiaoguangdong.orbit.R
+import com.xiaoguangdong.orbit.domain.model.AppLanguage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.first
 
 class ReminderReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
@@ -27,9 +29,10 @@ class ReminderReceiver : BroadcastReceiver() {
         CoroutineScope(Dispatchers.IO).launch {
             val app = context.applicationContext as OrbitApplication
             val repository = app.appContainer.orbitRepository
+            val language = app.appContainer.settingsRepository.settings.first().appLanguage
             val habit = repository.getHabitDraft(habitId)
             if (habit != null && canPostNotifications(context)) {
-                ensureChannel(context)
+                ensureChannel(context, language)
                 val openIntent = Intent(context, MainActivity::class.java).apply {
                     flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
                     putExtra(MainActivity.EXTRA_HABIT_ID, habitId)
@@ -45,7 +48,7 @@ class ReminderReceiver : BroadcastReceiver() {
                     NotificationCompat.Builder(context, CHANNEL_ID)
                         .setSmallIcon(R.mipmap.ic_launcher)
                         .setContentTitle(habit.name)
-                        .setContentText("Today's orbit is still waiting for a check-in.")
+                        .setContentText(localize(language, "Today's orbit is still waiting for a check-in.", "今天的习惯还在等你打卡。"))
                         .setPriority(NotificationCompat.PRIORITY_DEFAULT)
                         .setContentIntent(contentIntent)
                         .setAutoCancel(true)
@@ -57,17 +60,21 @@ class ReminderReceiver : BroadcastReceiver() {
         }
     }
 
-    private fun ensureChannel(context: Context) {
+    private fun ensureChannel(context: Context, language: AppLanguage) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         val channel = NotificationChannel(
             CHANNEL_ID,
-            "Habit reminders",
+            localize(language, "Habit reminders", "习惯提醒"),
             NotificationManager.IMPORTANCE_DEFAULT,
         ).apply {
-            description = "Orbit check-in reminders"
+            description = localize(language, "Orbit check-in reminders", "星筹打卡提醒")
         }
         manager.createNotificationChannel(channel)
+    }
+
+    private fun localize(language: AppLanguage, english: String, chinese: String): String {
+        return if (language == AppLanguage.CHINESE) chinese else english
     }
 
     private fun canPostNotifications(context: Context): Boolean {

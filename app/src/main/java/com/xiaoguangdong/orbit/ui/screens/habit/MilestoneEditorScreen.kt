@@ -4,6 +4,7 @@ import android.app.DatePickerDialog
 import android.app.TimePickerDialog
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -28,7 +29,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -36,10 +37,12 @@ import androidx.compose.ui.unit.dp
 import com.xiaoguangdong.orbit.domain.model.MilestoneDraft
 import com.xiaoguangdong.orbit.domain.model.MilestoneType
 import com.xiaoguangdong.orbit.ui.OrbitViewModel
+import com.xiaoguangdong.orbit.ui.milestoneTypeLabel
+import com.xiaoguangdong.orbit.ui.tr
 import java.time.LocalDate
 import java.time.LocalTime
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun MilestoneEditorScreen(
     viewModel: OrbitViewModel,
@@ -49,6 +52,8 @@ fun MilestoneEditorScreen(
     val context = LocalContext.current
     var draft by remember { mutableStateOf(MilestoneDraft()) }
     var error by rememberSaveable { mutableStateOf<String?>(null) }
+    val titleRequiredText = tr("Milestone title is required.", "请输入里程碑标题。")
+    val reminderLabel = draft.reminderTime?.let { tr("Reminder $it", "提醒 $it") } ?: tr("Add reminder", "添加提醒")
 
     LaunchedEffect(milestoneId) {
         if (milestoneId != null) {
@@ -63,10 +68,10 @@ fun MilestoneEditorScreen(
     ) {
         item {
             CenterAlignedTopAppBar(
-                title = { Text(if (milestoneId == null) "New milestone" else "Edit milestone") },
+                title = { Text(if (milestoneId == null) tr("New milestone", "新建里程碑") else tr("Edit milestone", "编辑里程碑")) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Outlined.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.Outlined.ArrowBack, contentDescription = tr("Back", "返回"))
                     }
                 },
             )
@@ -79,25 +84,25 @@ fun MilestoneEditorScreen(
                     error = null
                 },
                 modifier = Modifier.fillMaxWidth(),
-                label = { Text("Title") },
+                label = { Text(tr("Title", "标题")) },
                 isError = error != null,
                 supportingText = { error?.let { Text(it) } },
             )
         }
         item {
-            Text("Type", style = MaterialTheme.typography.titleLarge)
+            Text(tr("Type", "类型"), style = MaterialTheme.typography.titleLarge)
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 MilestoneType.entries.forEach { type ->
                     FilterChip(
                         selected = draft.type == type,
                         onClick = { draft = draft.copy(type = type) },
-                        label = { Text(type.displayName) },
+                        label = { Text(milestoneTypeLabel(type)) },
                     )
                 }
             }
         }
         item {
-            DateField("Date", draft.date, onClick = {
+            DateField(tr("Date", "日期"), draft.date, onClick = {
                 DatePickerDialog(
                     context,
                     { _, year, month, day ->
@@ -115,7 +120,7 @@ fun MilestoneEditorScreen(
                 onValueChange = { draft = draft.copy(note = it) },
                 modifier = Modifier.fillMaxWidth(),
                 minLines = 3,
-                label = { Text("Notes") },
+                label = { Text(tr("Notes", "备注")) },
             )
         }
         item {
@@ -135,7 +140,7 @@ fun MilestoneEditorScreen(
             ) {
                 Icon(Icons.Outlined.AddAlarm, contentDescription = null)
                 Text(
-                    text = draft.reminderTime?.let { "Reminder ${it}" } ?: "Add reminder",
+                    text = reminderLabel,
                     modifier = Modifier.padding(start = 8.dp),
                 )
             }
@@ -143,12 +148,12 @@ fun MilestoneEditorScreen(
         item {
             Button(
                 onClick = {
-                    if (draft.title.isBlank()) error = "Milestone title is required."
+                    if (draft.title.isBlank()) error = titleRequiredText
                     else viewModel.saveMilestone(draft) { onBack() }
                 },
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Text("Save milestone")
+                Text(tr("Save milestone", "保存里程碑"))
             }
         }
     }

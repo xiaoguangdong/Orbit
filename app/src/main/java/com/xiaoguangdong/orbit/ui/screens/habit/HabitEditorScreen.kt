@@ -10,7 +10,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.weight
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
@@ -41,11 +41,17 @@ import com.xiaoguangdong.orbit.domain.model.HabitDraft
 import com.xiaoguangdong.orbit.domain.model.HabitTimeBucket
 import com.xiaoguangdong.orbit.domain.model.TargetType
 import com.xiaoguangdong.orbit.ui.OrbitViewModel
+import com.xiaoguangdong.orbit.ui.bucketLabel
+import com.xiaoguangdong.orbit.ui.frequencyLabel
+import com.xiaoguangdong.orbit.ui.goalTypeLabel
+import com.xiaoguangdong.orbit.ui.targetTypeLabel
+import com.xiaoguangdong.orbit.ui.tr
+import com.xiaoguangdong.orbit.ui.weekdayLabel
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalTime
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun HabitEditorScreen(
     viewModel: OrbitViewModel,
@@ -55,6 +61,7 @@ fun HabitEditorScreen(
     val context = LocalContext.current
     var draft by remember { mutableStateOf(HabitDraft()) }
     var errorText by rememberSaveable { mutableStateOf<String?>(null) }
+    val habitNameRequiredText = tr("Habit name is required.", "请输入习惯名称。")
 
     LaunchedEffect(habitId) {
         if (habitId != null) {
@@ -69,10 +76,10 @@ fun HabitEditorScreen(
     ) {
         item {
             CenterAlignedTopAppBar(
-                title = { Text(if (habitId == null) "New orbit" else "Edit orbit") },
+                title = { Text(if (habitId == null) tr("New orbit", "新建习惯") else tr("Edit orbit", "编辑习惯")) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Outlined.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.Outlined.ArrowBack, contentDescription = tr("Back", "返回"))
                     }
                 },
             )
@@ -85,13 +92,13 @@ fun HabitEditorScreen(
                     errorText = null
                 },
                 modifier = Modifier.fillMaxWidth(),
-                label = { Text("Habit name") },
+                label = { Text(tr("Habit name", "习惯名称")) },
                 isError = errorText != null,
                 supportingText = { errorText?.let { Text(it) } },
             )
         }
         item {
-            Text("Icon", style = MaterialTheme.typography.titleLarge)
+            Text(tr("Icon", "图标"), style = MaterialTheme.typography.titleLarge)
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf("sparkle", "run", "read", "journal", "sleep", "call", "water", "mind", "meditate").forEach { icon ->
                     FilterChip(
@@ -103,7 +110,7 @@ fun HabitEditorScreen(
             }
         }
         item {
-            Text("Color", style = MaterialTheme.typography.titleLarge)
+            Text(tr("Color", "颜色"), style = MaterialTheme.typography.titleLarge)
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf("#2F6BFF", "#24C99A", "#F6B938", "#FF6B6B", "#8B5CF6", "#0EA5E9").forEach { color ->
                     FilterChip(
@@ -115,7 +122,12 @@ fun HabitEditorScreen(
             }
         }
         item {
-            EnumChooser("Frequency", FrequencyType.entries, draft.frequencyType) {
+            EnumChooser(
+                label = tr("Frequency", "频率"),
+                options = FrequencyType.entries,
+                selected = draft.frequencyType,
+                labelFor = { frequencyLabel(it) },
+            ) {
                 draft = draft.copy(frequencyType = it)
             }
         }
@@ -134,8 +146,8 @@ fun HabitEditorScreen(
                             draft = draft.copy(weeklyTargetCount = value.toIntOrNull()?.coerceIn(1, 7) ?: 1)
                         },
                         modifier = Modifier.fillMaxWidth(),
-                        label = { Text("Times per week") },
-                        supportingText = { Text("Optionally pin the preferred weekdays below.") },
+                        label = { Text(tr("Times per week", "每周次数")) },
+                        supportingText = { Text(tr("Optionally pin the preferred weekdays below.", "可选指定偏好的星期几。")) },
                     )
                     WeekdayPicker(draft.selectedWeekDays) { selected ->
                         draft = draft.copy(selectedWeekDays = selected)
@@ -152,8 +164,8 @@ fun HabitEditorScreen(
                         )
                     },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Monthly dates") },
-                    supportingText = { Text("Example: 1,15,30") },
+                    label = { Text(tr("Monthly dates", "每月日期")) },
+                    supportingText = { Text(tr("Example: 1,15,30", "例如：1,15,30")) },
                 )
             }
 
@@ -164,19 +176,29 @@ fun HabitEditorScreen(
                         draft = draft.copy(intervalDays = value.toIntOrNull()?.coerceAtLeast(1) ?: 1)
                     },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Every N days") },
+                    label = { Text(tr("Every N days", "每隔 N 天")) },
                 )
             }
 
             FrequencyType.DAILY -> Unit
         }
         item {
-            EnumChooser("Time bucket", HabitTimeBucket.entries, draft.timeBucket) {
+            EnumChooser(
+                label = tr("Time bucket", "时间段"),
+                options = HabitTimeBucket.entries,
+                selected = draft.timeBucket,
+                labelFor = { bucketLabel(it) },
+            ) {
                 draft = draft.copy(timeBucket = it)
             }
         }
         item {
-            EnumChooser("Target type", TargetType.entries, draft.targetType) {
+            EnumChooser(
+                label = tr("Target type", "目标类型"),
+                options = TargetType.entries,
+                selected = draft.targetType,
+                labelFor = { targetTypeLabel(it) },
+            ) {
                 draft = draft.copy(targetType = it)
             }
         }
@@ -189,25 +211,30 @@ fun HabitEditorScreen(
                             draft = draft.copy(targetValue = value.toDoubleOrNull())
                         },
                         modifier = Modifier.weight(1f),
-                        label = { Text("Target value") },
+                        label = { Text(tr("Target value", "目标值")) },
                     )
                     OutlinedTextField(
                         value = draft.unitLabel,
                         onValueChange = { draft = draft.copy(unitLabel = it) },
                         modifier = Modifier.weight(1f),
-                        label = { Text("Unit label") },
+                        label = { Text(tr("Unit label", "单位")) },
                     )
                 }
             }
         }
         item {
-            EnumChooser("Goal", GoalType.entries, draft.goalType) {
+            EnumChooser(
+                label = tr("Goal", "目标"),
+                options = GoalType.entries,
+                selected = draft.goalType,
+                labelFor = { goalTypeLabel(it) },
+            ) {
                 draft = draft.copy(goalType = it)
             }
         }
         if (draft.goalType == GoalType.TARGET_DATE) {
             item {
-                DateField("Goal date", draft.goalDate, onClick = {
+                DateField(tr("Goal date", "目标日期"), draft.goalDate, onClick = {
                     val sourceDate = draft.goalDate ?: LocalDate.now()
                     DatePickerDialog(
                         context,
@@ -227,12 +254,12 @@ fun HabitEditorScreen(
                     value = draft.goalCount?.toString().orEmpty(),
                     onValueChange = { draft = draft.copy(goalCount = it.toIntOrNull()) },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Target completions") },
+                    label = { Text(tr("Target completions", "目标次数")) },
                 )
             }
         }
         item {
-            DateField("Start date", draft.startDate, onClick = {
+            DateField(tr("Start date", "开始日期"), draft.startDate, onClick = {
                 DatePickerDialog(
                     context,
                     { _, year, month, day ->
@@ -245,7 +272,7 @@ fun HabitEditorScreen(
             })
         }
         item {
-            Text("Reminders", style = MaterialTheme.typography.titleLarge)
+            Text(tr("Reminders", "提醒"), style = MaterialTheme.typography.titleLarge)
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 draft.reminderTimes.forEach { reminderTime ->
                     FilterChip(
@@ -268,7 +295,7 @@ fun HabitEditorScreen(
                             true,
                         ).show()
                     },
-                    label = { Text("Add") },
+                    label = { Text(tr("Add", "添加")) },
                     leadingIcon = { Icon(Icons.Outlined.Add, null) },
                 )
             }
@@ -278,7 +305,7 @@ fun HabitEditorScreen(
                 value = draft.customGroup,
                 onValueChange = { draft = draft.copy(customGroup = it) },
                 modifier = Modifier.fillMaxWidth(),
-                label = { Text("Custom group") },
+                label = { Text(tr("Custom group", "自定义分组")) },
             )
         }
         item {
@@ -287,33 +314,34 @@ fun HabitEditorScreen(
                 onValueChange = { draft = draft.copy(note = it) },
                 modifier = Modifier.fillMaxWidth(),
                 minLines = 3,
-                label = { Text("Notes") },
+                label = { Text(tr("Notes", "备注")) },
             )
         }
         item {
             Button(
                 onClick = {
                     if (draft.name.isBlank()) {
-                        errorText = "Habit name is required."
+                        errorText = habitNameRequiredText
                     } else {
                         viewModel.saveHabit(draft) { onBack() }
                     }
                 },
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Text("Save orbit")
+                Text(tr("Save orbit", "保存习惯"))
             }
         }
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun WeekdayPicker(
     selectedDays: Set<DayOfWeek>,
     onChange: (Set<DayOfWeek>) -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Text("Weekdays", style = MaterialTheme.typography.titleLarge)
+        Text(tr("Weekdays", "星期"), style = MaterialTheme.typography.titleLarge)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             DayOfWeek.entries.forEach { day ->
                 FilterChip(
@@ -322,18 +350,20 @@ private fun WeekdayPicker(
                         val next = if (day in selectedDays) selectedDays - day else selectedDays + day
                         onChange(next)
                     },
-                    label = { Text(day.name.take(3)) },
+                    label = { Text(weekdayLabel(day)) },
                 )
             }
         }
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun <T> EnumChooser(
     label: String,
     options: Iterable<T>,
     selected: T,
+    labelFor: @Composable (T) -> String,
     onSelected: (T) -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -343,7 +373,7 @@ private fun <T> EnumChooser(
                 FilterChip(
                     selected = option == selected,
                     onClick = { onSelected(option) },
-                    label = { Text(option.toString().substringAfterLast('.').replace('_', ' ')) },
+                    label = { Text(labelFor(option)) },
                 )
             }
         }

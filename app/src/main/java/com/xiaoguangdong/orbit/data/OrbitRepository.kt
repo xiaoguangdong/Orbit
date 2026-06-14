@@ -25,6 +25,7 @@ import com.xiaoguangdong.orbit.domain.model.QuadrantSectionModel
 import com.xiaoguangdong.orbit.domain.model.TargetType
 import com.xiaoguangdong.orbit.domain.model.TaskBoardModel
 import com.xiaoguangdong.orbit.domain.model.TaskCardModel
+import com.xiaoguangdong.orbit.domain.model.TaskDueState
 import com.xiaoguangdong.orbit.domain.model.TaskDraft
 import com.xiaoguangdong.orbit.domain.model.TaskQuadrant
 import com.xiaoguangdong.orbit.domain.model.TodayOverview
@@ -189,11 +190,15 @@ class OrbitRepository(
             val cards = tasks.map { it.toCardModel() }
             TaskBoardModel(
                 sections = TaskQuadrant.entries.map { quadrant ->
-                    QuadrantSectionModel(
-                        quadrant = quadrant,
+                    val quadrantTasks = sortTasksForBoard(
                         tasks = cards.filter { task ->
                             task.quadrant == quadrant && (!task.isCompleted || !settings.hideCompleted)
                         },
+                        settings = settings,
+                    )
+                    QuadrantSectionModel(
+                        quadrant = quadrant,
+                        tasks = quadrantTasks,
                     )
                 },
                 activeCount = cards.count { !it.isCompleted },
@@ -304,8 +309,13 @@ class OrbitRepository(
         taskDao.deleteTask(taskId)
     }
 
-    suspend fun markCompleted(habitId: Long, date: LocalDate, value: Double? = null, note: String? = null, isBackfilled: Boolean = false) {
+    suspend fun markCompleted(habitId: Long, date: LocalDate, value: Double? = null, note: String? = null, isBackfilled: Boolean = false): Boolean {
+        if (isBackfilled) {
+            val habit = habitDao.getHabitById(habitId) ?: return false
+            if (!isHabitPlannedForDate(habit, date)) return false
+        }
         upsertCheckIn(habitId, date, CheckInStatus.COMPLETED, value, note, isBackfilled)
+        return true
     }
 
     suspend fun markSkipped(habitId: Long, date: LocalDate, note: String? = null) {
@@ -447,12 +457,13 @@ private fun MilestoneEntity.toDraft(): MilestoneDraft = MilestoneDraft(
     note = note,
 )
 
-private fun TaskEntity.toCardModel(): TaskCardModel = TaskCardModel(
+private fun TaskEntity.toCardModel(today: LocalDate = LocalDate.now()): TaskCardModel = TaskCardModel(
     id = id,
     title = title,
     description = description,
     quadrant = TaskQuadrant.valueOf(quadrant),
     dueDate = dueDate?.toLocalDateOrNull(),
+    dueState = calculateTaskDueState(dueDate?.toLocalDateOrNull(), isCompleted, today),
     isCompleted = isCompleted,
     completedAt = completedAt?.toLocalDateTimeOrNull(),
 )
@@ -466,7 +477,7 @@ private fun TaskEntity.toDraft(): TaskDraft = TaskDraft(
     isCompleted = isCompleted,
 )
 
-private fun calculateCompletionRate30d(habit: HabitEntity, checkIns: List<CheckInEntity>, today: LocalDate): Float {
+internal fun calculateCompletionRate30d(habit: HabitEntity, checkIns: List<CheckInEntity>, today: LocalDate): Float {
     val start = today.minusDays(29)
     val plannedDates = buildDateWindow(start, today).filter { date -> isHabitPlannedForDate(habit, date) }
     if (plannedDates.isEmpty()) return 0f
@@ -474,7 +485,7 @@ private fun calculateCompletionRate30d(habit: HabitEntity, checkIns: List<CheckI
     return plannedDates.count { it in completedDates }.toFloat() / plannedDates.size.toFloat()
 }
 
-private fun calculateCurrentStreak(habit: HabitEntity, checkIns: List<CheckInEntity>, today: LocalDate): Int {
+internal fun calculateCurrentStreak(habit: HabitEntity, checkIns: List<CheckInEntity>, today: LocalDate): Int {
     var streak = 0
     var cursor = today
     while (!cursor.isBefore(habit.startDate.toLocalDateOrNull() ?: today.minusYears(5))) {
@@ -493,7 +504,7 @@ private fun calculateCurrentStreak(habit: HabitEntity, checkIns: List<CheckInEnt
     return streak
 }
 
-private fun calculateBestStreak(habit: HabitEntity, checkIns: List<CheckInEntity>, today: LocalDate): Int {
+internal fun calculateBestStreak(habit: HabitEntity, checkIns: List<CheckInEntity>, today: LocalDate): Int {
     val dates = buildDateWindow(habit.startDate.toLocalDateOrNull() ?: today.minusDays(120), today)
     var best = 0
     var current = 0
@@ -545,7 +556,38 @@ fun isHabitPlannedForDate(habit: HabitEntity, date: LocalDate): Boolean {
     }
 }
 
-private fun buildDateWindow(start: LocalDate, end: LocalDate): List<LocalDate> {
+internal fun calculateTaskDueState(dueDate: LocalDate?, isCompleted: Boolean, today: LocalDate): TaskDueState {
+    if (isCompleted) return TaskDueState.SOMEDAY
+    if (dueDate == null) return TaskDueState.SOMEDAY
+    return when {
+        dueDate.isBefore(today) -> TaskDueState.OVERDUE
+        dueDate.isEqual(today) -> TaskDueState.TODAY
+        else -> TaskDueState.UPCOMING
+    }
+}
+
+internal fun sortTasksForBoard(
+    tasks: List<TaskCardModel>,
+    settings: OrbitSettings,
+): List<TaskCardModel> = tasks.sortedWith(taskBoardComparator(settings))
+
+private fun taskBoardComparator(settings: OrbitSettings): Comparator<TaskCardModel> {
+    val completedOrder = if (settings.sortIncompleteFirst) compareBy<TaskCardModel> { it.isCompleted } else compareBy<TaskCardModel> { false }
+    return completedOrder
+        .thenBy { task ->
+            when (task.dueState) {
+                TaskDueState.OVERDUE -> 0
+                TaskDueState.TODAY -> 1
+                TaskDueState.UPCOMING -> 2
+                TaskDueState.SOMEDAY -> 3
+            }
+        }
+        .thenBy { it.dueDate ?: LocalDate.MAX }
+        .thenBy { it.completedAt ?: LocalDateTime.MIN }
+        .thenBy { it.title.lowercase() }
+}
+
+internal fun buildDateWindow(start: LocalDate, end: LocalDate): List<LocalDate> {
     val dates = mutableListOf<LocalDate>()
     var cursor = start
     while (!cursor.isAfter(end)) {

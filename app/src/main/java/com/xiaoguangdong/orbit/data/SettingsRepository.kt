@@ -3,7 +3,9 @@ package com.xiaoguangdong.orbit.data
 import android.content.Context
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.xiaoguangdong.orbit.domain.model.AppLanguage
 import com.xiaoguangdong.orbit.domain.model.OrbitSettings
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -13,6 +15,7 @@ private val Context.settingsDataStore by preferencesDataStore(name = "orbit_sett
 
 class SettingsRepository(private val context: Context) {
     private object Keys {
+        val APP_LANGUAGE = stringPreferencesKey("app_language")
         val CHECK_IN_SOUND = booleanPreferencesKey("check_in_sound")
         val SORT_INCOMPLETE_FIRST = booleanPreferencesKey("sort_incomplete_first")
         val SHOW_IN_SEVEN_DAY_STRIP = booleanPreferencesKey("show_in_seven_day_strip")
@@ -25,6 +28,9 @@ class SettingsRepository(private val context: Context) {
 
     val settings: Flow<OrbitSettings> = context.settingsDataStore.data.map { prefs ->
         OrbitSettings(
+            appLanguage = prefs[Keys.APP_LANGUAGE]?.let {
+                runCatching { AppLanguage.valueOf(it) }.getOrDefault(AppLanguage.CHINESE)
+            } ?: AppLanguage.CHINESE,
             checkInSound = prefs[Keys.CHECK_IN_SOUND] ?: true,
             sortIncompleteFirst = prefs[Keys.SORT_INCOMPLETE_FIRST] ?: true,
             showInSevenDayStrip = prefs[Keys.SHOW_IN_SEVEN_DAY_STRIP] ?: true,
@@ -39,6 +45,7 @@ class SettingsRepository(private val context: Context) {
     suspend fun updateSettings(transform: OrbitSettings.() -> OrbitSettings) {
         val settingsValue = settings.first().transform()
         context.settingsDataStore.edit { prefs ->
+            prefs[Keys.APP_LANGUAGE] = settingsValue.appLanguage.name
             prefs[Keys.CHECK_IN_SOUND] = settingsValue.checkInSound
             prefs[Keys.SORT_INCOMPLETE_FIRST] = settingsValue.sortIncompleteFirst
             prefs[Keys.SHOW_IN_SEVEN_DAY_STRIP] = settingsValue.showInSevenDayStrip

@@ -7,12 +7,13 @@ plugins {
 
 android {
     namespace = "com.xiaoguangdong.orbit"
-    compileSdk = 36
+    compileSdk = 34
+    buildToolsVersion = "34.0.4"
 
     defaultConfig {
         applicationId = "com.xiaoguangdong.orbit"
         minSdk = 26
-        targetSdk = 36
+        targetSdk = 34
         versionCode = 1
         versionName = "0.1.0"
 
@@ -31,12 +32,12 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
+        sourceCompatibility = JavaVersion.VERSION_11
+        targetCompatibility = JavaVersion.VERSION_11
     }
 
     kotlinOptions {
-        jvmTarget = "17"
+        jvmTarget = "11"
     }
 
     buildFeatures {
@@ -64,12 +65,15 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.material.icons.extended)
     implementation(libs.androidx.navigation.compose)
+    implementation(libs.google.material)
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     implementation(libs.androidx.work.runtime)
     implementation(libs.androidx.datastore.preferences)
 
     ksp(libs.androidx.room.compiler)
+
+    testImplementation(libs.junit4)
 
     debugImplementation(libs.androidx.compose.ui.tooling)
 }

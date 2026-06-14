@@ -58,6 +58,18 @@ enum class TaskQuadrant(
     NOT_IMPORTANT_NOT_URGENT("Not important not urgent", "IV", "#24C99A"),
 }
 
+enum class TaskDueState(val label: String) {
+    OVERDUE("Overdue"),
+    TODAY("Today"),
+    UPCOMING("Upcoming"),
+    SOMEDAY("Someday"),
+}
+
+enum class AppLanguage {
+    ENGLISH,
+    CHINESE,
+}
+
 enum class AppScreen {
     TODAY,
     ORBIT,
@@ -189,6 +201,7 @@ data class TaskCardModel(
     val description: String,
     val quadrant: TaskQuadrant,
     val dueDate: LocalDate?,
+    val dueState: TaskDueState,
     val isCompleted: Boolean,
     val completedAt: LocalDateTime?,
 )
@@ -205,6 +218,7 @@ data class TaskBoardModel(
 )
 
 data class OrbitSettings(
+    val appLanguage: AppLanguage = AppLanguage.CHINESE,
     val checkInSound: Boolean = true,
     val sortIncompleteFirst: Boolean = true,
     val showInSevenDayStrip: Boolean = true,

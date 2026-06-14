@@ -3,6 +3,7 @@ package com.xiaoguangdong.orbit.ui.screens.task
 import android.app.DatePickerDialog
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -35,9 +36,11 @@ import androidx.compose.ui.unit.dp
 import com.xiaoguangdong.orbit.domain.model.TaskDraft
 import com.xiaoguangdong.orbit.domain.model.TaskQuadrant
 import com.xiaoguangdong.orbit.ui.OrbitViewModel
+import com.xiaoguangdong.orbit.ui.taskQuadrantLabel
+import com.xiaoguangdong.orbit.ui.tr
 import java.time.LocalDate
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun TaskEditorScreen(
     viewModel: OrbitViewModel,
@@ -47,6 +50,7 @@ fun TaskEditorScreen(
     val context = LocalContext.current
     var draft by remember { mutableStateOf(TaskDraft()) }
     var error by rememberSaveable { mutableStateOf<String?>(null) }
+    val titleRequiredText = tr("Task title is required.", "请输入任务标题。")
 
     LaunchedEffect(taskId) {
         if (taskId != null) {
@@ -61,10 +65,10 @@ fun TaskEditorScreen(
     ) {
         item {
             CenterAlignedTopAppBar(
-                title = { Text(if (taskId == null) "New task" else "Edit task") },
+                title = { Text(if (taskId == null) tr("New task", "新建任务") else tr("Edit task", "编辑任务")) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Outlined.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.Outlined.ArrowBack, contentDescription = tr("Back", "返回"))
                     }
                 },
             )
@@ -77,7 +81,7 @@ fun TaskEditorScreen(
                     error = null
                 },
                 modifier = Modifier.fillMaxWidth(),
-                label = { Text("Task title") },
+                label = { Text(tr("Task title", "任务标题")) },
                 isError = error != null,
                 supportingText = { error?.let { Text(it) } },
             )
@@ -87,20 +91,20 @@ fun TaskEditorScreen(
                 value = draft.description,
                 onValueChange = { draft = draft.copy(description = it) },
                 modifier = Modifier.fillMaxWidth(),
-                label = { Text("Description") },
+                label = { Text(tr("Description", "描述")) },
                 minLines = 3,
             )
         }
         item {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text("Quadrant", style = MaterialTheme.typography.titleLarge)
+                Text(tr("Quadrant", "象限"), style = MaterialTheme.typography.titleLarge)
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     TaskQuadrant.entries.forEach { quadrant ->
                         val accent = Color(android.graphics.Color.parseColor(quadrant.colorHex))
                         FilterChip(
                             selected = draft.quadrant == quadrant,
                             onClick = { draft = draft.copy(quadrant = quadrant) },
-                            label = { Text("${quadrant.shortLabel}. ${quadrant.displayName}") },
+                            label = { Text("${quadrant.shortLabel}. ${taskQuadrantLabel(quadrant)}") },
                             border = androidx.compose.material3.FilterChipDefaults.filterChipBorder(
                                 borderColor = accent.copy(alpha = 0.4f),
                                 selectedBorderColor = accent,
@@ -113,43 +117,52 @@ fun TaskEditorScreen(
             }
         }
         item {
-            OutlinedTextField(
-                value = draft.dueDate?.toString().orEmpty(),
-                onValueChange = {},
-                modifier = Modifier.fillMaxWidth(),
-                readOnly = true,
-                label = { Text("Due date") },
-                trailingIcon = {
-                    IconButton(onClick = {
-                        val sourceDate = draft.dueDate ?: LocalDate.now()
-                        DatePickerDialog(
-                            context,
-                            { _, year, month, day ->
-                                draft = draft.copy(dueDate = LocalDate.of(year, month + 1, day))
-                            },
-                            sourceDate.year,
-                            sourceDate.monthValue - 1,
-                            sourceDate.dayOfMonth,
-                        ).show()
-                    }) {
-                        Icon(Icons.Outlined.Edit, contentDescription = "Due date")
-                    }
-                },
-                supportingText = { Text("Leave empty to keep it unscheduled.") },
-            )
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                OutlinedTextField(
+                    value = draft.dueDate?.toString().orEmpty(),
+                    onValueChange = {},
+                    modifier = Modifier.fillMaxWidth(),
+                    readOnly = true,
+                    label = { Text(tr("Due date", "截止日期")) },
+                    trailingIcon = {
+                        IconButton(onClick = {
+                            val sourceDate = draft.dueDate ?: LocalDate.now()
+                            DatePickerDialog(
+                                context,
+                                { _, year, month, day ->
+                                    draft = draft.copy(dueDate = LocalDate.of(year, month + 1, day))
+                                },
+                                sourceDate.year,
+                                sourceDate.monthValue - 1,
+                                sourceDate.dayOfMonth,
+                            ).show()
+                        }) {
+                            Icon(Icons.Outlined.Edit, contentDescription = tr("Due date", "截止日期"))
+                        }
+                    },
+                    supportingText = { Text(tr("Leave empty to keep it unscheduled.", "留空表示暂不安排。")) },
+                )
+                if (draft.dueDate != null) {
+                    FilterChip(
+                        selected = false,
+                        onClick = { draft = draft.copy(dueDate = null) },
+                        label = { Text(tr("Clear due date", "清除截止日期")) },
+                    )
+                }
+            }
         }
         item {
             Button(
                 onClick = {
                     if (draft.title.isBlank()) {
-                        error = "Task title is required."
+                        error = titleRequiredText
                     } else {
                         viewModel.saveTask(draft) { onBack() }
                     }
                 },
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Text("Save task")
+                Text(tr("Save task", "保存任务"))
             }
         }
     }
