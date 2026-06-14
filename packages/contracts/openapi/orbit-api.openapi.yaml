@@ -1,0 +1,13 @@
+openapi: 3.1.0
+info:
+  title: Orbit API
+  version: 0.1.0
+  description: >
+    Placeholder OpenAPI document for the future Orbit backend. This file marks
+    the canonical location for shared API contracts consumed by Android, iOS,
+    HarmonyOS, and server implementations.
+servers:
+  - url: https://api.orbit.example.com
+paths: {}
+components:
+  schemas: {}

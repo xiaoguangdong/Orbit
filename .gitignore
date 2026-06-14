@@ -6,3 +6,5 @@ build/
 */build/
 local.properties
 images/
+apps/android/.gradle/
+apps/android/.kotlin/
